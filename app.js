@@ -1,10 +1,18 @@
 require("dotenv").config();
 const express = require("express");
 require("express-async-errors");
+const helmet = require("helmet");
+const xss = require("xss-clean");
+const rateLimiter = require("express-rate-limit");
 
 const app = express();
 
+app.use(helmet());
+app.use(xss());
+app.use(rateLimiter({ windowMs: 15 * 60 * 1000, max: 100 }));
+
 app.set("view engine", "ejs");
+app.use(require("cookie-parser")(process.env.SESSION_SECRET));
 app.use(require("body-parser").urlencoded({ extended: true }));
 
 // session setup
@@ -47,6 +55,14 @@ app.use(passport.session());
 
 app.use(require("connect-flash")());
 
+const csrf = require("host-csrf");
+const csrfMiddleware = csrf({
+    protected_operations: ["PATCH", "PUT", "POST", "DELETE"],
+    protected_content_types: ["application/json", "application/x-www-form-urlencoded"],
+    secret: process.env.SESSION_SECRET,
+});
+app.use(csrfMiddleware);
+
 // routes
 app.use(require("./middleware/storeLocals"));
 app.get("/", (req, res) => {
@@ -55,9 +71,11 @@ app.get("/", (req, res) => {
 app.use("/sessions", require("./routes/sessionRoutes"));
 
 const secretWordRouter = require("./routes/secretWord");
+const jobsRouter = require("./routes/jobs");
 // auth middleware
 const auth = require("./middleware/auth");
 app.use("/secretWord", auth, secretWordRouter);
+app.use("/jobs", auth, jobsRouter);
 
 app.use((req, res) => {
     res.status(404).send(`That page (${req.url}) was not found.`);
