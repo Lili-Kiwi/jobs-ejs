@@ -7,6 +7,7 @@ const rateLimiter = require("express-rate-limit");
 
 const app = express();
 
+// security
 app.use(helmet());
 app.use(xss());
 app.use(rateLimiter({ windowMs: 15 * 60 * 1000, max: 100 }));
@@ -45,6 +46,7 @@ if (app.get("env") === "production") {
 
 app.use(session(sessionParms));
 
+// passport needs to come after session
 const passport = require("passport");
 const passportInit = require("./passport/passportInit");
 
@@ -55,10 +57,14 @@ app.use(passport.session());
 
 app.use(require("connect-flash")());
 
+// csrf protection - has to be after cookie-parser and body-parser
 const csrf = require("host-csrf");
 const csrfMiddleware = csrf({
     protected_operations: ["PATCH", "PUT", "POST", "DELETE"],
-    protected_content_types: ["application/json", "application/x-www-form-urlencoded"],
+    protected_content_types: [
+        "application/json",
+        "application/x-www-form-urlencoded",
+    ],
     secret: process.env.SESSION_SECRET,
 });
 app.use(csrfMiddleware);
@@ -72,15 +78,16 @@ app.use("/sessions", require("./routes/sessionRoutes"));
 
 const secretWordRouter = require("./routes/secretWord");
 const jobsRouter = require("./routes/jobs");
-// auth middleware
 const auth = require("./middleware/auth");
 app.use("/secretWord", auth, secretWordRouter);
 app.use("/jobs", auth, jobsRouter);
 
+// 404 handle
 app.use((req, res) => {
     res.status(404).send(`That page (${req.url}) was not found.`);
 });
 
+// error handle
 app.use((err, req, res, next) => {
     res.status(500).send(err.message);
     console.log(err);
