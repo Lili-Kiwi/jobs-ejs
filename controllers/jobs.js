@@ -18,7 +18,7 @@ const createJob = async (req, res, next) => {
     } catch (e) {
         if (e.constructor.name === "ValidationError") {
             parseVErr(e, req);
-            return res.render("job", { job: null });
+            return res.render("job", { job: null, errors: req.flash("error") });
         }
         return next(e);
     }
@@ -52,7 +52,7 @@ const updateJob = async (req, res, next) => {
         if (e.constructor.name === "ValidationError") {
             parseVErr(e, req);
             const job = await Job.findById(req.params.id);
-            return res.render("job", { job });
+            return res.render("job", { job, errors: req.flash("error") });
         }
         return next(e);
     }
