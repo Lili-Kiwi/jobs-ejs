@@ -22,6 +22,7 @@ const createJob = async (req, res, next) => {
         }
         return next(e);
     }
+    req.flash("info", "Job added.");
     res.redirect("/jobs");
 };
 
